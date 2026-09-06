@@ -2098,6 +2098,9 @@ export const UncertaintyCharts = ({ results }) => {
               <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
               <XAxis
                 dataKey="bin"
+                type="number"
+                domain={["dataMin", "dataMax"]}
+                allowDuplicatedCategory={false}
                 label={{
                   value: "Value",
                   position: "insideBottom",
