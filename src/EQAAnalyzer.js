@@ -724,24 +724,36 @@ const EQAAnalyzer = () => {
               filename={`${studyInfo.lotNumber}_Summary`}
               studyInfo={studyInfo}
               exportType="png"
+              tabKey="summary"
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
             <ExportButton
               targetRef={homogeneityRef}
               filename={`${studyInfo.lotNumber}_Homogeneity`}
               studyInfo={studyInfo}
               exportType="png"
+              tabKey="homogeneity"
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
             <ExportButton
               targetRef={stabilityRef}
               filename={`${studyInfo.lotNumber}_Stability`}
               studyInfo={studyInfo}
               exportType="png"
+              tabKey="stability"
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
             <ExportButton
               targetRef={uncertaintyRef}
               filename={`${studyInfo.lotNumber}_Uncertainty`}
               studyInfo={studyInfo}
               exportType="png"
+              tabKey="uncertainty"
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
           </div>
 

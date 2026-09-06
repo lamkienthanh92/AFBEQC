@@ -46,15 +46,47 @@ const triggerDownload = (href, filename) => {
   }
 };
 
+// Pauses until the browser has actually painted a frame, so that a tab
+// switched from display:none to display:block has non-zero layout
+// dimensions (and any chart animations have had a moment to render)
+// before html2canvas tries to capture it.
+const waitForRender = (delayMs = 350) =>
+  new Promise((resolve) =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTimeout(resolve, delayMs))
+    )
+  );
+
 export const ExportButton = ({
   targetRef,
   filename,
   studyInfo,
   exportType = "png",
+  // Optional: if this button exports a dashboard that lives inside a
+  // display:none/block tab, pass its key plus the tab state so the
+  // export can switch to that tab first. Without this, exporting a
+  // dashboard that isn't the currently visible tab captures an empty
+  // (0 KB) image, because html2canvas can't measure a hidden element.
+  tabKey,
+  activeTab,
+  setActiveTab,
 }) => {
   const handleExport = async () => {
-    if (!targetRef.current) {
-      alert("No content to export!");
+    // Switch to the target tab first if it isn't already active, and
+    // give the browser time to actually lay it out before capturing.
+    const needsTabSwitch =
+      tabKey !== undefined && setActiveTab && activeTab !== tabKey;
+    const previousTab = activeTab;
+    if (needsTabSwitch) {
+      setActiveTab(tabKey);
+      await waitForRender();
+    }
+
+    if (!targetRef.current || targetRef.current.offsetWidth === 0) {
+      alert(
+        "No content to export! Make sure the dashboard has finished loading, then try again."
+      );
+      if (needsTabSwitch) setActiveTab(previousTab);
       return;
     }
 
@@ -190,6 +222,10 @@ export const ExportButton = ({
       // Remove loading div if still exists
       const loading = document.getElementById("export-loading");
       if (loading) document.body.removeChild(loading);
+    } finally {
+      // Always restore whichever tab was active before we switched to
+      // capture a hidden one, even if the export failed.
+      if (needsTabSwitch) setActiveTab(previousTab);
     }
   };
 
