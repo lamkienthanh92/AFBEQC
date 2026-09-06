@@ -7,7 +7,44 @@ import jsPDF from "jspdf";
  * Provides high-quality export functionality for dashboards
  * Supports PNG (300 DPI) and PDF export
  * ✅ FIXED: Proper blob error handling
+ * ✅ FIXED: Canvas size is now clamped so very tall/wide dashboards at
+ *    300 DPI don't silently exceed the browser's max canvas dimension
+ *    (a common cause of the download appearing to do nothing).
+ * ✅ FIXED: Download now falls back to opening the image/PDF in a new
+ *    tab if the browser blocks the programmatic <a download> click
+ *    (this happens in some sandboxed/embedded preview environments).
  */
+
+// Most browsers cap a single canvas dimension around 16384px, and many
+// mobile/low-memory browsers fail well before that. Keep a safe margin.
+const MAX_CANVAS_DIMENSION = 8000;
+
+const getSafeScale = (el, desiredScale) => {
+  const width = el.scrollWidth * desiredScale;
+  const height = el.scrollHeight * desiredScale;
+  const largest = Math.max(width, height);
+  if (largest <= MAX_CANVAS_DIMENSION) return desiredScale;
+  return desiredScale * (MAX_CANVAS_DIMENSION / largest);
+};
+
+// Triggers a file download for a blob/data URL; if the browser silently
+// blocks the programmatic click (no error is thrown when this happens),
+// falls back to opening the file in a new tab so the user can save it
+// manually via the browser's built-in "Save as" / long-press menu.
+const triggerDownload = (href, filename) => {
+  try {
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = href;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error("Programmatic download failed, opening in new tab:", err);
+    window.open(href, "_blank", "noopener");
+  }
+};
 
 export const ExportButton = ({
   targetRef,
@@ -28,8 +65,8 @@ export const ExportButton = ({
       <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                   background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                   z-index: 10000; text-align: center;">
-        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⏳ Đang xuất dashboard...</div>
-        <div style="font-size: 14px; color: #666;">Vui lòng đợi trong giây lát</div>
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⏳ Exporting dashboard...</div>
+        <div style="font-size: 14px; color: #666;">Please wait a moment</div>
       </div>
     `;
 
@@ -38,7 +75,8 @@ export const ExportButton = ({
 
       // Calculate scale for 300 DPI
       // Standard screen DPI is 96, so scale = 300/96 ≈ 3.125
-      const scale = 3.125;
+      // Clamped so tall dashboards don't exceed the browser's max canvas size
+      const scale = getSafeScale(targetRef.current, 3.125);
 
       // Capture with high quality settings
       const canvas = await html2canvas(targetRef.current, {
@@ -71,21 +109,17 @@ export const ExportButton = ({
             );
           });
 
-          // Create download link
+          // Create download link (with automatic new-tab fallback)
           const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.download = `${filename}_${Date.now()}.png`;
-          link.href = url;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+          triggerDownload(url, `${filename}_${Date.now()}.png`);
+          // Revoke slightly later so a fallback new-tab load has time to read it
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
 
           // Remove loading
           const loading = document.getElementById("export-loading");
           if (loading) document.body.removeChild(loading);
 
-          alert("✅ Xuất PNG thành công!");
+          alert("✅ PNG exported successfully!");
         } catch (blobError) {
           console.error(
             "Blob creation failed, trying fallback method:",
@@ -94,18 +128,13 @@ export const ExportButton = ({
 
           // ✅ Fallback: Use toDataURL method
           const dataUrl = canvas.toDataURL("image/png", 1.0);
-          const link = document.createElement("a");
-          link.download = `${filename}_${Date.now()}.png`;
-          link.href = dataUrl;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          triggerDownload(dataUrl, `${filename}_${Date.now()}.png`);
 
           // Remove loading
           const loading = document.getElementById("export-loading");
           if (loading) document.body.removeChild(loading);
 
-          alert("✅ Xuất PNG thành công (fallback method)!");
+          alert("✅ PNG exported successfully (fallback method)!");
         }
       } else if (exportType === "pdf") {
         // Export as PDF
@@ -152,11 +181,11 @@ export const ExportButton = ({
         const loading = document.getElementById("export-loading");
         if (loading) document.body.removeChild(loading);
 
-        alert("✅ Xuất PDF thành công!");
+        alert("✅ PDF exported successfully!");
       }
     } catch (error) {
       console.error("Export error:", error);
-      alert("❌ Lỗi khi xuất: " + error.message);
+      alert("❌ Export failed: " + error.message);
 
       // Remove loading div if still exists
       const loading = document.getElementById("export-loading");
@@ -195,7 +224,7 @@ export const ExportButton = ({
         e.target.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
       }}
     >
-      {exportType === "png" ? "📸 Xuất PNG (300 DPI)" : "📄 Xuất PDF"}
+      {exportType === "png" ? "📸 Export PNG (300 DPI)" : "📄 Export PDF"}
     </button>
   );
 };
@@ -259,7 +288,7 @@ export const ExportableContainer = ({ children, title, studyInfo }) => {
             <strong>Level:</strong> {studyInfo?.targetLevel || "N/A"} |{" "}
             <strong>Date:</strong> {studyInfo?.productionDate || "N/A"}
             <br />
-            <strong>Exported:</strong> {new Date().toLocaleString("vi-VN")}
+            <strong>Exported:</strong> {new Date().toLocaleString("en-US")}
           </div>
         </div>
 
@@ -298,7 +327,7 @@ export const useBatchExport = () => {
       <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                   background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                   z-index: 10000; text-align: center;">
-        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⏳ Đang xuất ${dashboards.length} dashboard...</div>
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⏳ Exporting ${dashboards.length} dashboards...</div>
         <div id="batch-progress" style="font-size: 14px; color: #666;">0/${dashboards.length}</div>
       </div>
     `;
@@ -310,7 +339,7 @@ export const useBatchExport = () => {
       const { ref, filename } = dashboards[i];
 
       try {
-        const scale = 3.125;
+        const scale = getSafeScale(ref.current, 3.125);
         const canvas = await html2canvas(ref.current, {
           scale: scale,
           useCORS: true,
@@ -336,24 +365,14 @@ export const useBatchExport = () => {
           });
 
           const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.download = `${filename}_${i + 1}_${Date.now()}.png`;
-          link.href = url;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+          triggerDownload(url, `${filename}_${i + 1}_${Date.now()}.png`);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
 
           successCount++;
         } catch (blobError) {
           // Fallback to dataURL
           const dataUrl = canvas.toDataURL("image/png", 1.0);
-          const link = document.createElement("a");
-          link.download = `${filename}_${i + 1}_${Date.now()}.png`;
-          link.href = dataUrl;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          triggerDownload(dataUrl, `${filename}_${i + 1}_${Date.now()}.png`);
 
           successCount++;
         }
@@ -376,7 +395,7 @@ export const useBatchExport = () => {
     if (loading) document.body.removeChild(loading);
 
     alert(
-      `✅ Đã xuất ${successCount}/${dashboards.length} dashboard thành công!`
+      `✅ Exported ${successCount}/${dashboards.length} dashboards successfully!`
     );
   };
 

@@ -707,7 +707,7 @@ const EQAAnalyzer = () => {
           {/* Export Panel */}
           <div style={styles.exportContainer}>
             <h3 style={{ margin: "0 0 15px 0", color: "#856404" }}>
-              📸 Xuất Dashboard (300 DPI PNG)
+              📸 Export Dashboard (300 DPI PNG)
             </h3>
             <p
               style={{
@@ -716,8 +716,8 @@ const EQAAnalyzer = () => {
                 color: "#856404",
               }}
             >
-              Chọn dashboard bạn muốn xuất dưới dạng hình ảnh chất lượng cao
-              (300 DPI):
+              Choose which dashboard you want to export as a high-resolution
+              image (300 DPI):
             </p>
             <ExportButton
               targetRef={summaryRef}
