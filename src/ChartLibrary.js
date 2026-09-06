@@ -380,20 +380,34 @@ export const DecisionSummary = ({ results, criteria }) => {
           <ResponsiveContainer width="100%" height={400}>
             <RadarChart
               data={[
-                { metric: "Homogeneity", score: homogeneityScore, target: 100 },
-                { metric: "Agreement", score: agreementScore, target: 100 },
-                { metric: "Stability", score: stabilityScore, target: 100 },
+                {
+                  metric: "Homogeneity",
+                  score: Math.min(100, homogeneityScore),
+                  target: 100,
+                },
+                {
+                  metric: "Agreement",
+                  score: Math.min(100, agreementScore),
+                  target: 100,
+                },
+                {
+                  metric: "Stability",
+                  score: Math.min(100, stabilityScore),
+                  target: 100,
+                },
                 {
                   metric: "Precision",
-                  score: Math.max(0, 100 - results.homogeneity.cv),
+                  score: Math.min(100, Math.max(0, 100 - results.homogeneity.cv)),
                   target: 100,
                 },
                 {
                   metric: "Robustness",
-                  score:
+                  score: Math.min(
+                    100,
                     (results.homogeneity.robustMean /
                       results.homogeneity.mean) *
-                    100,
+                      100
+                  ),
                   target: 100,
                 },
               ]}
@@ -406,9 +420,11 @@ export const DecisionSummary = ({ results, criteria }) => {
               <PolarRadiusAxis
                 angle={90}
                 domain={[0, 100]}
+                allowDataOverflow={true}
+                tickFormatter={(v) => Math.round(v)}
                 tick={{ fontSize: 11 }}
               />
-              <Radar
+              <Radar isAnimationActive={false}
                 name="Performance"
                 dataKey="score"
                 stroke="#3498db"
@@ -416,7 +432,7 @@ export const DecisionSummary = ({ results, criteria }) => {
                 fillOpacity={0.5}
                 strokeWidth={2.5}
               />
-              <Radar
+              <Radar isAnimationActive={false}
                 name="Target"
                 dataKey="target"
                 stroke="#27ae60"
@@ -909,7 +925,7 @@ export const HomogeneityCharts = ({ data, results }) => {
                 strokeWidth={1.5}
               />
 
-              <Line
+              <Line isAnimationActive={false}
                 type="monotone"
                 dataKey="reader1"
                 stroke="#3498db"
@@ -917,7 +933,7 @@ export const HomogeneityCharts = ({ data, results }) => {
                 dot={{ r: 5, fill: "#3498db" }}
                 name="Reader 1"
               />
-              <Line
+              <Line isAnimationActive={false}
                 type="monotone"
                 dataKey="reader2"
                 stroke="#9b59b6"
@@ -1104,7 +1120,7 @@ export const HomogeneityCharts = ({ data, results }) => {
               />
               <ReferenceLine y={0} stroke="#95a5a6" strokeDasharray="3 3" />
 
-              <Scatter
+              <Scatter isAnimationActive={false}
                 name="Sample Differences"
                 data={blandAltmanData}
                 fill="#9b59b6"
@@ -1173,7 +1189,7 @@ export const HomogeneityCharts = ({ data, results }) => {
                 label="2× Mean"
               />
 
-              <Bar dataKey="range" fill="#3498db" name="Range">
+              <Bar isAnimationActive={false} dataKey="range" fill="#3498db" name="Range">
                 {boxPlotData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
@@ -1185,7 +1201,7 @@ export const HomogeneityCharts = ({ data, results }) => {
                   />
                 ))}
               </Bar>
-              <Line
+              <Line isAnimationActive={false}
                 type="monotone"
                 dataKey="mean"
                 stroke="#27ae60"
@@ -1391,21 +1407,21 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 label="+20%"
               />
 
-              <Area
+              <Area isAnimationActive={false}
                 type="monotone"
                 dataKey="upper"
                 fill="#3498db"
                 fillOpacity={0.2}
                 stroke="none"
               />
-              <Area
+              <Area isAnimationActive={false}
                 type="monotone"
                 dataKey="lower"
                 fill="#3498db"
                 fillOpacity={0.2}
                 stroke="none"
               />
-              <Line
+              <Line isAnimationActive={false}
                 type="monotone"
                 dataKey="mean"
                 stroke="#2c3e50"
@@ -1550,7 +1566,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 label={{ value: "α=0.05", fontSize: 11 }}
               />
 
-              <Bar dataKey="logP" name="-log10(P)">
+              <Bar isAnimationActive={false} dataKey="logP" name="-log10(P)">
                 {pValueData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
@@ -1611,7 +1627,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 label="LCL"
               />
 
-              <Line
+              <Line isAnimationActive={false}
                 type="monotone"
                 dataKey="cusum"
                 stroke="#e67e22"
@@ -1665,7 +1681,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
 
-                <Bar
+                <Bar isAnimationActive={false}
                   yAxisId="left"
                   dataKey="variance"
                   fill="#3498db"
@@ -1675,7 +1691,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                   <Cell fill="#3498db" />
                   <Cell fill="#2c3e50" />
                 </Bar>
-                <Line
+                <Line isAnimationActive={false}
                   yAxisId="right"
                   type="monotone"
                   dataKey="contribution"
@@ -1788,8 +1804,8 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
 
-                <Scatter name="Observed" dataKey="mean" fill="#3498db" />
-                <Line
+                <Scatter isAnimationActive={false} name="Observed" dataKey="mean" fill="#3498db" />
+                <Line isAnimationActive={false}
                   name="Fitted Line"
                   dataKey="predicted"
                   stroke="#e74c3c"
@@ -1946,13 +1962,13 @@ export const UncertaintyCharts = ({ results }) => {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: "11px" }} />
 
-              <Bar
+              <Bar isAnimationActive={false}
                 yAxisId="left"
                 dataKey="value"
                 fill="#9b59b6"
                 name="Uncertainty"
               />
-              <Line
+              <Line isAnimationActive={false}
                 yAxisId="right"
                 type="monotone"
                 dataKey="cumulative"
@@ -2140,7 +2156,7 @@ export const UncertaintyCharts = ({ results }) => {
                 label="97.5%"
               />
 
-              <Area
+              <Area isAnimationActive={false}
                 type="monotone"
                 dataKey="frequency"
                 fill="#9b59b6"
@@ -2204,7 +2220,7 @@ export const UncertaintyCharts = ({ results }) => {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: "11px" }} />
 
-              <Bar
+              <Bar isAnimationActive={false}
                 yAxisId="left"
                 dataKey="uncertainty"
                 fill="#16a085"
@@ -2214,7 +2230,7 @@ export const UncertaintyCharts = ({ results }) => {
                 <Cell fill="#27ae60" />
                 <Cell fill="#e67e22" />
               </Bar>
-              <Line
+              <Line isAnimationActive={false}
                 yAxisId="right"
                 type="monotone"
                 dataKey="coverage"

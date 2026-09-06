@@ -13,6 +13,11 @@ import jsPDF from "jspdf";
  * ✅ FIXED: Download now falls back to opening the image/PDF in a new
  *    tab if the browser blocks the programmatic <a download> click
  *    (this happens in some sandboxed/embedded preview environments).
+ * ✅ FIXED: Chart entry animations are now disabled (see ChartLibrary.js)
+ *    so exports capture the finished chart instead of a mid-animation
+ *    frame — this previously made line/area series look "cut off"
+ *    partway across the chart when a tab was captured shortly after
+ *    first becoming visible.
  */
 
 // Most browsers cap a single canvas dimension around 16384px, and many
@@ -48,9 +53,9 @@ const triggerDownload = (href, filename) => {
 
 // Pauses until the browser has actually painted a frame, so that a tab
 // switched from display:none to display:block has non-zero layout
-// dimensions (and any chart animations have had a moment to render)
-// before html2canvas tries to capture it.
-const waitForRender = (delayMs = 350) =>
+// dimensions and ResponsiveContainer has measured its size, before
+// html2canvas tries to capture it.
+const waitForRender = (delayMs = 500) =>
   new Promise((resolve) =>
     requestAnimationFrame(() =>
       requestAnimationFrame(() => setTimeout(resolve, delayMs))
