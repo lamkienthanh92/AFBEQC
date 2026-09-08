@@ -297,19 +297,19 @@ export const DecisionSummary = ({ results, criteria }) => {
               style={{
                 padding: "8px 12px",
                 backgroundColor:
-                  results.homogeneity.tTest.pValue > criteria.pValueThreshold
+                  results.homogeneity.pairedTTest.pValue > criteria.pValueThreshold
                     ? "#d4edda"
                     : "#f8d7da",
                 borderRadius: "6px",
                 fontSize: "13px",
                 fontWeight: "bold",
                 color:
-                  results.homogeneity.tTest.pValue > criteria.pValueThreshold
+                  results.homogeneity.pairedTTest.pValue > criteria.pValueThreshold
                     ? "#155724"
                     : "#721c24",
               }}
             >
-              p = {formatNumber(results.homogeneity.tTest.pValue, 3)}
+              p = {formatNumber(results.homogeneity.pairedTTest.pValue, 3)}
             </div>
           </div>
         </ChartCard>
@@ -351,7 +351,7 @@ export const DecisionSummary = ({ results, criteria }) => {
             <div
               style={{ fontSize: "12px", color: "#777", marginBottom: "12px" }}
             >
-              All p &gt; {criteria.pValueThreshold}
+              Dual criteria met (p &gt; {criteria.pValueThreshold} or Δ within {Math.round((results.stability?.practicalSignificanceThreshold ?? 0.15) * 100)}%)
             </div>
             <div
               style={{
@@ -1065,10 +1065,17 @@ export const HomogeneityCharts = ({ data, results }) => {
           <ResponsiveContainer width="100%" height={380}>
             <ScatterChart margin={{ top: 10, right: 25, left: 10, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+              {/* Both axes previously used Recharts' default domain, which
+                  starts the x-axis at 0 (wasting most of the plot area) and can
+                  clip the lower limit of agreement off the bottom of the y-axis
+                  so that the reference line is not drawn at all. Both domains
+                  are now derived from the data and the limits themselves. */}
               <XAxis
                 type="number"
                 dataKey="average"
                 name="Average"
+                domain={["dataMin - 20", "dataMax + 20"]}
+                allowDecimals={false}
                 label={{
                   value: "Average of Two Readers",
                   position: "insideBottom",
@@ -1080,6 +1087,20 @@ export const HomogeneityCharts = ({ data, results }) => {
                 type="number"
                 dataKey="difference"
                 name="Difference"
+                domain={[
+                  Math.floor(
+                    Math.min(
+                      results.blandAltman.lowerLimit,
+                      ...results.blandAltman.data.differences
+                    ) - 10
+                  ),
+                  Math.ceil(
+                    Math.max(
+                      results.blandAltman.upperLimit,
+                      ...results.blandAltman.data.differences
+                    ) + 10
+                  ),
+                ]}
                 label={{
                   value: "Difference (R1 - R2)",
                   angle: -90,
@@ -1261,6 +1282,8 @@ export const StabilityCharts = ({ data, results, baseline }) => {
   // Cumulative sum of the deviation of each time-point mean from baseline.
   // The previous implementation started the accumulation at index 1, silently
   // discarding the deviation of the first time point from the cumulative sum.
+  const PST = results.practicalSignificanceThreshold ?? 0.15;
+  const PSTpc = Math.round(PST * 100);
   const cusumData = timeSeriesData.map((entry, index) => {
     const cusum = timeSeriesData
       .slice(0, index + 1)
@@ -1334,7 +1357,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
         <ChartCard
           label="(A)"
           title="Stability Over Time"
-          caption="Temporal variation with control bands. Green zone (±10%) = acceptable, yellow (10-20%) = warning, red (>20%) = critical."
+          caption={`Temporal variation with control bands. Inner band = the ±${Math.round((results.practicalSignificanceThreshold ?? 0.15) * 100)}% practical-significance limit; outer band = twice that limit.`}
           span={2}
         >
           <ResponsiveContainer width="100%" height={380}>
@@ -1362,14 +1385,14 @@ export const StabilityCharts = ({ data, results, baseline }) => {
               <Legend wrapperStyle={{ fontSize: "11px" }} />
 
               <ReferenceArea
-                y1={baseline * 0.8}
-                y2={baseline * 1.2}
+                y1={baseline * (1 - 2 * PST)}
+                y2={baseline * (1 + 2 * PST)}
                 fill="#ffffcc"
                 fillOpacity={0.2}
               />
               <ReferenceArea
-                y1={baseline * 0.9}
-                y2={baseline * 1.1}
+                y1={baseline * (1 - PST)}
+                y2={baseline * (1 + PST)}
                 fill="#ccffcc"
                 fillOpacity={0.3}
               />
@@ -1381,30 +1404,30 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 label="Baseline"
               />
               <ReferenceLine
-                y={baseline * 0.9}
+                y={baseline * (1 - PST)}
                 stroke="#f39c12"
                 strokeDasharray="5 5"
                 strokeWidth={1.5}
-                label="-10%"
+                label={`-${PSTpc}%`}
               />
               <ReferenceLine
-                y={baseline * 1.1}
+                y={baseline * (1 + PST)}
                 stroke="#f39c12"
                 strokeDasharray="5 5"
                 strokeWidth={1.5}
-                label="+10%"
+                label={`+${PSTpc}%`}
               />
               <ReferenceLine
-                y={baseline * 0.8}
+                y={baseline * (1 - 2 * PST)}
                 stroke="#e74c3c"
                 strokeDasharray="3 3"
-                label="-20%"
+                label={`-${2 * PSTpc}%`}
               />
               <ReferenceLine
-                y={baseline * 1.2}
+                y={baseline * (1 + 2 * PST)}
                 stroke="#e74c3c"
                 strokeDasharray="3 3"
-                label="+20%"
+                label={`+${2 * PSTpc}%`}
               />
 
               <Area isAnimationActive={false}
@@ -1526,7 +1549,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 fontStyle: "italic",
               }}
             >
-              * Stat different but within \u00b1{Math.round((results.practicalSignificanceThreshold ?? 0.15) * 100)}%
+              * Stat different but within ±{Math.round((results.practicalSignificanceThreshold ?? 0.15) * 100)}%
             </div>
           </div>
         </ChartCard>
@@ -1905,7 +1928,7 @@ export const UncertaintyCharts = ({ results }) => {
           UNCERTAINTY ANALYSIS - MEASUREMENT UNCERTAINTY BUDGET
         </h1>
         <p style={{ margin: "6px 0 0 0", fontSize: "14px", opacity: 0.9 }}>
-          GUM-compliant uncertainty estimation and Monte Carlo validation
+          Uncertainty estimation following GUM methodology, with a Monte Carlo cross-check
         </p>
       </div>
 

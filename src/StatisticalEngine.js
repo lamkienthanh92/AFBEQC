@@ -476,7 +476,10 @@ export const performStatisticalAnalysis = (input) => {
     homogeneityCriterion > studyInfo.acceptanceCriteria.homogeneityThreshold;
 
   // Inter-reader comparison
+  // The Methods specify a PAIRED comparison between readers on the same
+  // slides; the independent two-sample test is retained only for reference.
   const tTestResult = tTest(homogeneity.reader1, homogeneity.reader2);
+  const pairedTTestResult = pairedTTest(homogeneity.reader1, homogeneity.reader2);
   const fTestResult = fTest(homogeneity.reader1, homogeneity.reader2);
   const iccResult = intraclassCorrelation(
     homogeneity.reader1,
@@ -716,6 +719,7 @@ export const performStatisticalAnalysis = (input) => {
       robustMean: robustMean,
       robustSD: robustSd,
       tTest: tTestResult,
+      pairedTTest: pairedTTestResult,
       fTest: fTestResult,
       icc: iccResult,
       ccc: cccResult,
