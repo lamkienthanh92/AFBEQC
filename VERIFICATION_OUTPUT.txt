@@ -13,14 +13,14 @@ Grubbs outlier       {"grubbsStatistic":2.0120075681109184,"criticalValue":2.156
 
 === STABILITY (baseline = 371.7) ===
 timepoint |   mean |   delta% |      t | df |      p | stable
-Day 1     |  351.3 |  -5.5 | -1.183 |  5 | 0.2898 | yes | SD(diff) = 42.16
-Day 3     |  386.3 | +  3.9 |  2.670 |  5 | 0.0444 | yes | SD(diff) = 13.43
-Day 5     |  356.8 |  -4.0 | -0.914 |  5 | 0.4025 | yes | SD(diff) = 39.83
-Day 7     |  361.5 |  -2.7 | -0.763 |  5 | 0.4801 | yes | SD(diff) = 32.76
-Week 1    |  383.5 | +  3.2 |  1.920 |  5 | 0.1130 | yes | SD(diff) = 15.06
-Week 2    |  336.2 |  -9.6 | -3.026 |  5 | 0.0292 | yes | SD(diff) = 28.76
-Week 3    |  367.8 |  -1.0 | -0.518 |  5 | 0.6267 | yes | SD(diff) = 18.29
-Week 4    |  354.7 |  -4.6 | -1.032 |  5 | 0.3493 | yes | SD(diff) = 40.43
+Day 1     |  351.3 |  -5.5 | -0.773 |  2 | 0.5204 | yes | SD(diff) = 42.16
+Day 3     |  386.3 | +  3.9 |  3.118 |  2 | 0.0893 | yes | SD(diff) = 13.43
+Day 5     |  356.8 |  -4.0 | -0.590 |  2 | 0.6149 | yes | SD(diff) = 39.83
+Day 7     |  361.5 |  -2.7 | -0.658 |  2 | 0.5782 | yes | SD(diff) = 32.76
+Week 1    |  383.5 | +  3.2 |  1.407 |  2 | 0.2947 | yes | SD(diff) = 15.06
+Week 2    |  336.2 |  -9.6 | -2.017 |  2 | 0.1812 | yes | SD(diff) = 28.76
+Week 3    |  367.8 |  -1.0 | -0.349 |  2 | 0.7607 | yes | SD(diff) = 18.29
+Week 4    |  354.7 |  -4.6 | -0.673 |  2 | 0.5703 | yes | SD(diff) = 40.43
 
 === VARIANCE COMPONENTS ===
 between-timepoint variance 278.5 ( 25.1 % )
@@ -69,6 +69,10 @@ verify4.mjs - the four short-term time points (the basis of Figs. 1-4)
 Engine and dashboard corrections (see README.md):
   1  exact Student t distribution for all t-test p-values
   2  one-sample t vs baseline for stability, df = n - 1
+  2b correct unit of analysis for the stability test: n=3 slide-level means
+     (df=2), not n=6 individual readings (df=5) -- fixes pseudoreplication
+     that had been manufacturing significance at Day 3 / Week 2. With this
+     fix, no time point in this dataset reaches p < 0.05.
   3  exact F distribution (fCDF was a 0.5 placeholder)
   4  genuine two-way ICC(2,1) with an exact 95 % CI
   5  CUSUM no longer drops the first time point
@@ -82,7 +86,5 @@ Engine and dashboard corrections (see README.md):
  11  literal \u00b1 escape in JSX text replaced with the character
  12  inter-reader card names the ICC model and the test displayed
 
-Because the application now seeds the Monte Carlo generator by default, the
-values printed above are exactly what the dashboards export.
 All values cross-checked against scipy.stats.
 ---------------------------------------------------------------------------

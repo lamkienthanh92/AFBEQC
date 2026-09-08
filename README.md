@@ -74,7 +74,7 @@ Developed at the Faculty of Medical Technology, Van Lang University, Ho Chi Minh
 
 ## Statistical engine corrections (revision for Accreditation and Quality Assurance)
 
-Seven defects were identified and fixed while verifying the values reported in
+Eight defects were identified and fixed while verifying the values reported in
 the manuscript. They are documented inline in `src/StatisticalEngine.js` and
 `src/ChartLibrary.js`:
 
@@ -84,6 +84,19 @@ the manuscript. They are documented inline in `src/StatisticalEngine.js` and
 2. **One-sample stability test.** Each time point is compared with the baseline
    mean using a one-sample t-test with df = n - 1, replacing a two-sample test
    against a zero-variance constant vector (which gave df = 2n - 2).
+2b. **Correct unit of analysis for the stability test.** The one-sample test in
+   (2) was still being run on the n=6 individual readings (df=5) at each time
+   point, even though each time point is 3 physical slides read twice, not 6
+   independent slides. Two readings of the same slide are not independent
+   evidence about whether that slide has drifted from baseline — treating them
+   as such (pseudoreplication) shrinks the standard error and can manufacture
+   "significant" drift the slide-level data do not support. The test is now
+   run on the n=3 slide-level means, df = n - 1 = 2, matching the original
+   thesis protocol (Nguyễn Thị Bé Nga, 2024) this software re-implements. This
+   changes every stability p-value; with the corrected test, no time point in
+   the ĐGĐ-P01 dataset reaches p < 0.05, so the dual-criteria (statistical +
+   practical significance) distinction the manuscript previously illustrated
+   with Day 3 and Week 2 no longer has an example in this dataset.
 3. **Exact F distribution.** `fCDF()` was a placeholder returning `0.5`.
 4. **Genuine ICC(2,1).** Two-way random effects, absolute agreement, single
    rater, with an exact 95 % confidence interval. The previous formula was

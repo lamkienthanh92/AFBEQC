@@ -536,14 +536,23 @@ export const performStatisticalAnalysis = (input) => {
 
     // Compare to baseline.
     //
-    // Previously this called the independent two-sample tTest() with a
-    // zero-variance constant vector for the baseline. That yields the correct
-    // t-statistic by coincidence but assigns df = 2n - 2 instead of n - 1,
-    // because the baseline is a single fixed reference value and not an
-    // independently sampled group. It is now computed as a one-sample t-test
-    // of the readings at this time point against the baseline mean.
-    const nTp = flatData.length;
-    const sdTp = standardDeviation(flatData);
+    // The one-sample t-test must be carried out on the independent
+    // experimental units — the slides — not on the individual readings.
+    // Each element of timepointData is one slide read by two readers
+    // ([r1, r2]); the two readings are replicate READINGS of the same
+    // slide, not two independent slides, so they are not independent
+    // evidence about whether the *sample* has drifted from baseline.
+    // Testing on the n=6 flattened readings (df=5) folds reader-to-reader
+    // reading variability into the standard error as if it were additional
+    // information about the sample, which shrinks the SE and can produce
+    // "significant" drift that the slide-level data do not actually
+    // support (pseudoreplication). The correct unit of analysis is the
+    // n=3 slide-level means, df = n - 1 = 2 — this also matches the
+    // original thesis protocol (Nguyễn Thị Bé Nga, 2024) this software
+    // re-implements, which computed p-values on the 3 slide means.
+    const sampleMeans = timepointData.map((readings) => mean(readings));
+    const nTp = sampleMeans.length;
+    const sdTp = standardDeviation(sampleMeans);
     const tStat = (timepointMean - baselineMean) / (sdTp / Math.sqrt(nTp));
     const dfTp = nTp - 1;
     const comparison = {
@@ -585,7 +594,7 @@ export const performStatisticalAnalysis = (input) => {
       pValue: comparison.pValue,
       tStatistic: comparison.tStatistic,
       degreesOfFreedom: comparison.degreesOfFreedom,
-      sdOfReadings: sdTp,
+      sdOfSampleMeans: sdTp,
       n: nTp,
       meanChange: timepointMean - baselineMean,
       percentChange: percentChange,
