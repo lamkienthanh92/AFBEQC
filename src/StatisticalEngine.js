@@ -71,8 +71,8 @@ export const tTest = (arr1, arr2) => {
   // Degrees of freedom
   const df = n1 + n2 - 2;
 
-  // Two-tailed p-value (approximation using normal distribution for large samples)
-  const pValue = 2 * (1 - normalCDF(Math.abs(t)));
+  // Two-tailed p-value from the exact t distribution (df = n1 + n2 - 2)
+  const pValue = tTestPValue(t, df);
 
   return {
     tStatistic: t,
@@ -95,7 +95,8 @@ export const pairedTTest = (arr1, arr2) => {
 
   const t = meanDiff / (sdDiff / Math.sqrt(n));
   const df = n - 1;
-  const pValue = 2 * (1 - normalCDF(Math.abs(t)));
+  // Exact two-tailed p-value from the t distribution with df = n - 1.
+  const pValue = tTestPValue(t, df);
 
   return {
     tStatistic: t,
@@ -114,7 +115,7 @@ export const fTest = (arr1, arr2) => {
   const df1 = arr1.length - 1;
   const df2 = arr2.length - 1;
 
-  // Simplified p-value calculation
+  // Two-tailed p-value from the exact F distribution
   const pValue = 2 * Math.min(fCDF(f, df1, df2), 1 - fCDF(f, df1, df2));
 
   return {
@@ -152,11 +153,46 @@ export const intraclassCorrelation = (arr1, arr2) => {
   );
   const WMS = WSS / n;
 
-  // ICC calculation
-  const icc = (BMS - WMS) / (BMS + WMS);
+  // Two-way decomposition: separate the rater (column) effect out of the
+  // within-subject term so that the coefficient is a genuine ICC(2,1) rather
+  // than the one-way ICC(1,1) that (BMS - WMS)/(BMS + WMS) returns.
+  const k = 2; // two raters
+  const raterMeans = [mean(arr1), mean(arr2)];
+  const JSS =
+    n * raterMeans.reduce((sum, rm) => sum + Math.pow(rm - grandMean, 2), 0);
+  const JMS = JSS / (k - 1); // rater mean square
+  const EMS = (WSS - JSS) / ((n - 1) * (k - 1)); // residual mean square
+
+  // ICC(2,1): two-way random effects, absolute agreement, single rater
+  const icc =
+    (BMS - EMS) / (BMS + (k - 1) * EMS + (k * (JMS - EMS)) / n);
+
+  // ICC(1,1) retained for reference/backward comparison only
+  const icc11 = (BMS - WMS) / (BMS + (k - 1) * WMS);
+
+  // 95 % confidence interval for ICC(2,1) (McGraw & Wong, ICC(A,1))
+  const aTerm = (k * icc) / (n * (1 - icc));
+  const bTerm = 1 + (k * icc * (n - 1)) / (n * (1 - icc));
+  const vDen =
+    Math.pow(aTerm * JMS, 2) / (k - 1) +
+    Math.pow(bTerm * EMS, 2) / ((n - 1) * (k - 1));
+  const v = Math.pow(aTerm * JMS + bTerm * EMS, 2) / vDen;
+  const Fl = fQuantile(0.975, n - 1, v);
+  const Fu = fQuantile(0.975, v, n - 1);
+  const ciLower =
+    (n * (BMS - Fl * EMS)) /
+    (Fl * (k * JMS + (k * n - k - n) * EMS) + n * BMS);
+  const ciUpper =
+    (n * (Fu * BMS - EMS)) /
+    (k * JMS + (k * n - k - n) * EMS + n * Fu * BMS);
 
   return {
     icc: icc,
+    ci95: [ciLower, ciUpper],
+    iccModel: "ICC(2,1): two-way random effects, absolute agreement, single rater",
+    icc11: icc11,
+    raterMeanSquare: JMS,
+    residualMeanSquare: EMS,
     betweenSubjectVariance: BMS,
     withinSubjectVariance: WMS,
     interpretation:
@@ -310,7 +346,7 @@ export const linearRegression = (x, y) => {
   const seSlope =
     Math.sqrt(ssRes / (n - 2)) / Math.sqrt(sumX2 - (sumX * sumX) / n);
   const tSlope = slope / seSlope;
-  const pValueSlope = 2 * (1 - normalCDF(Math.abs(tSlope)));
+  const pValueSlope = tTestPValue(tSlope, n - 2);
 
   return {
     slope: slope,
@@ -467,8 +503,13 @@ export const performStatisticalAnalysis = (input) => {
   const baselineMean = stability.data.baseline?.mean || homogeneityMean;
   const stabilityResults = {};
 
-  // ✅ Practical significance threshold (15%) - fixes "too strict" issue
-  const practicalSignificanceThreshold = 0.15;
+  // ✅ Practical significance threshold — user-configurable via
+  // studyInfo.acceptanceCriteria.practicalSignificanceThreshold (fraction,
+  // e.g. 0.15 = 15%), since different EQA programmes/analytes use different
+  // acceptable-variation limits; falls back to 0.15 if not supplied so
+  // existing callers/datasets keep working unchanged.
+  const practicalSignificanceThreshold =
+    studyInfo?.acceptanceCriteria?.practicalSignificanceThreshold ?? 0.15;
 
   // ✅ Arrays for variance components analysis
   const allTimepointMeans = [];
@@ -490,11 +531,23 @@ export const performStatisticalAnalysis = (input) => {
     allTimepointSDs.push(timepointSD);
     allTimepointCVs.push(timepointCV);
 
-    // Compare to baseline
-    const comparison = tTest(
-      Array(flatData.length).fill(baselineMean),
-      flatData
-    );
+    // Compare to baseline.
+    //
+    // Previously this called the independent two-sample tTest() with a
+    // zero-variance constant vector for the baseline. That yields the correct
+    // t-statistic by coincidence but assigns df = 2n - 2 instead of n - 1,
+    // because the baseline is a single fixed reference value and not an
+    // independently sampled group. It is now computed as a one-sample t-test
+    // of the readings at this time point against the baseline mean.
+    const nTp = flatData.length;
+    const sdTp = standardDeviation(flatData);
+    const tStat = (timepointMean - baselineMean) / (sdTp / Math.sqrt(nTp));
+    const dfTp = nTp - 1;
+    const comparison = {
+      tStatistic: tStat,
+      degreesOfFreedom: dfTp,
+      pValue: tTestPValue(tStat, dfTp),
+    };
 
     // ✅ Calculate percent change from baseline
     const percentChange = ((timepointMean - baselineMean) / baselineMean) * 100;
@@ -528,6 +581,9 @@ export const performStatisticalAnalysis = (input) => {
       cv: timepointCV,
       pValue: comparison.pValue,
       tStatistic: comparison.tStatistic,
+      degreesOfFreedom: comparison.degreesOfFreedom,
+      sdOfReadings: sdTp,
+      n: nTp,
       meanChange: timepointMean - baselineMean,
       percentChange: percentChange,
       absPercentChange: absPercentChange,
@@ -583,7 +639,14 @@ export const performStatisticalAnalysis = (input) => {
     totalVar > 0 ? (withinVar / totalVar) * 100 : 0;
 
   // Trend analysis
-  const timeIndices = stability.timepoints.map((_, i) => i + 1);
+  // Use real elapsed time (days) when the caller supplies it, so that the
+  // regression slope is expressed in AFB per day rather than AFB per
+  // measurement occasion; fall back to the ordinal index otherwise.
+  const timeIndices =
+    Array.isArray(stability.elapsedDays) &&
+    stability.elapsedDays.length === stability.timepoints.length
+      ? stability.elapsedDays
+      : stability.timepoints.map((_, i) => i + 1);
   const timepointMeans = stability.timepoints.map(
     (tp) => stabilityResults[tp]?.mean || 0
   );
@@ -668,6 +731,7 @@ export const performStatisticalAnalysis = (input) => {
       trend: trendAnalysis,
       varianceComponents: varianceComponents, // ✅ ADDED
       allStable: allStable,
+      practicalSignificanceThreshold: practicalSignificanceThreshold, // ✅ so dashboards can display the configured value instead of a hardcoded "15%"
     },
     uncertainty: {
       budget: uncertaintyBudgetResult,
@@ -700,22 +764,145 @@ function normalCDF(x) {
   return x > 0 ? 1 - p : p;
 }
 
-function fCDF(x, df1, df2) {
-  // Simplified F-distribution CDF approximation
-  // For actual implementation, use a proper stats library
-  return 0.5; // Placeholder
+// ---------------------------------------------------------------------------
+// Exact distribution functions (Student's t and Fisher's F)
+//
+// Previously the engine approximated all t-test p-values with the standard
+// normal CDF and returned a hard-coded 0.5 from fCDF(). With the small sample
+// sizes used in EQA panel characterisation (n = 10 for homogeneity, n = 3
+// slides x 2 readings per stability time point) the normal approximation is
+// severely anti-conservative and understates p-values by up to an order of
+// magnitude. Both are now computed exactly from the regularised incomplete
+// beta function.
+// ---------------------------------------------------------------------------
+
+function logGamma(z) {
+  // Lanczos approximation (g = 7, n = 9); accurate to ~15 significant digits
+  const g = 7;
+  const c = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
+  ];
+  if (z < 0.5) {
+    // Reflection formula
+    return (
+      Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z)
+    );
+  }
+  z -= 1;
+  let x = c[0];
+  for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+  const t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+
+function betacf(x, a, b) {
+  // Continued-fraction expansion for the incomplete beta function
+  const FPMIN = 1e-300;
+  const EPS = 3e-16;
+  const qab = a + b;
+  const qap = a + 1;
+  const qam = a - 1;
+  let c = 1;
+  let d = 1 - (qab * x) / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m;
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    h *= d * c;
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+
+function incompleteBeta(x, a, b) {
+  // Regularised incomplete beta function I_x(a, b)
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const lbeta =
+    logGamma(a + b) - logGamma(a) - logGamma(b) +
+    a * Math.log(x) + b * Math.log(1 - x);
+  const front = Math.exp(lbeta);
+  if (x < (a + 1) / (a + b + 2)) {
+    return (front * betacf(x, a, b)) / a;
+  }
+  return 1 - (Math.exp(
+    logGamma(a + b) - logGamma(a) - logGamma(b) +
+    b * Math.log(1 - x) + a * Math.log(x)
+  ) * betacf(1 - x, b, a)) / b;
+}
+
+export function tCDF(t, df) {
+  // Cumulative distribution function of Student's t with df degrees of freedom
+  if (!isFinite(t) || !isFinite(df) || df <= 0) return NaN;
+  const x = df / (df + t * t);
+  const p = 0.5 * incompleteBeta(x, df / 2, 0.5);
+  return t > 0 ? 1 - p : p;
+}
+
+export function tTestPValue(t, df) {
+  // Two-tailed p-value from the t distribution
+  if (!isFinite(t) || !isFinite(df) || df <= 0) return NaN;
+  return 2 * (1 - tCDF(Math.abs(t), df));
+}
+
+export function fCDF(x, df1, df2) {
+  // Cumulative distribution function of the F distribution
+  if (!isFinite(x) || x <= 0) return 0;
+  return incompleteBeta((df1 * x) / (df1 * x + df2), df1 / 2, df2 / 2);
+}
+
+// ---------------------------------------------------------------------------
+// Seedable pseudo-random generator (mulberry32).
+//
+// Monte Carlo results are otherwise irreproducible between runs, which makes
+// any simulated figure quoted in a report impossible to verify. Calling
+// setRandomSeed(n) makes the simulation deterministic; passing null restores
+// Math.random().
+// ---------------------------------------------------------------------------
+let _rng = Math.random;
+
+export function setRandomSeed(seed) {
+  if (seed === null || seed === undefined) {
+    _rng = Math.random;
+    return;
+  }
+  let a = seed >>> 0;
+  _rng = function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function normalRandom(mean, sd) {
   // Box-Muller transform
-  const u1 = Math.random();
-  const u2 = Math.random();
+  const u1 = _rng() || Number.EPSILON;
+  const u2 = _rng();
   const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
   return mean + z * sd;
 }
 
 function uniformRandom(min, max) {
-  return min + Math.random() * (max - min);
+  return min + _rng() * (max - min);
 }
 
 function percentile(arr, p) {
@@ -725,4 +912,17 @@ function percentile(arr, p) {
   const upper = Math.ceil(index);
   const weight = index - lower;
   return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
+// Quantile of the F distribution, obtained by bisection on fCDF. Used for the
+// ICC confidence interval.
+export function fQuantile(p, df1, df2) {
+  let lo = 0;
+  let hi = 1e6;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (fCDF(mid, df1, df2) < p) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
 }

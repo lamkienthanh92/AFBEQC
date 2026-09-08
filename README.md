@@ -71,3 +71,36 @@ If you use this software, please cite the associated manuscript (citation detail
 ## Acknowledgements
 
 Developed at the Faculty of Medical Technology, Van Lang University, Ho Chi Minh City, Vietnam, with the Centre for Quality Assurance in Medical Laboratory Testing, University of Medicine and Pharmacy at Ho Chi Minh City.
+
+## Statistical engine corrections (revision for Accreditation and Quality Assurance)
+
+Seven defects were identified and fixed while verifying the values reported in
+the manuscript. They are documented inline in `src/StatisticalEngine.js` and
+`src/ChartLibrary.js`:
+
+1. **Exact t distribution.** All t-test p-values were previously computed from
+   the standard normal CDF. `tCDF()` / `tTestPValue()` now evaluate Student's t
+   exactly via the regularised incomplete beta function.
+2. **One-sample stability test.** Each time point is compared with the baseline
+   mean using a one-sample t-test with df = n - 1, replacing a two-sample test
+   against a zero-variance constant vector (which gave df = 2n - 2).
+3. **Exact F distribution.** `fCDF()` was a placeholder returning `0.5`.
+4. **Genuine ICC(2,1).** Two-way random effects, absolute agreement, single
+   rater, with an exact 95 % confidence interval. The previous formula was
+   ICC(1,1) despite the documented model.
+5. **CUSUM.** The cumulative sum no longer discards the first time point.
+6. **Regression on elapsed time.** Pass `stability.elapsedDays` to obtain a
+   slope in AFB per day; otherwise the ordinal index is used.
+7. **Seedable Monte Carlo.** `setRandomSeed(n)` makes the simulation exactly
+   reproducible; pass `null` to restore `Math.random()`.
+
+### Reproducing the published values
+
+```bash
+node verify.mjs
+```
+
+This re-executes the engine against the raw Lot ĐGĐ-P01 dataset with
+`setRandomSeed(20240101)` and prints every statistic reported in the
+manuscript. The expected output is stored in `VERIFICATION_OUTPUT.txt`. All
+values have been cross-checked against `scipy.stats`.

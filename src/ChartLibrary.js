@@ -1258,13 +1258,13 @@ export const StabilityCharts = ({ data, results, baseline }) => {
     status: results.timepoints[tp]?.stable ? "Stable" : "Unstable",
   }));
 
+  // Cumulative sum of the deviation of each time-point mean from baseline.
+  // The previous implementation started the accumulation at index 1, silently
+  // discarding the deviation of the first time point from the cumulative sum.
   const cusumData = timeSeriesData.map((entry, index) => {
-    const cusum =
-      index === 0
-        ? 0
-        : timeSeriesData
-            .slice(1, index + 1)
-            .reduce((sum, e) => sum + (e.mean - baseline), 0);
+    const cusum = timeSeriesData
+      .slice(0, index + 1)
+      .reduce((sum, e) => sum + (e.mean - baseline), 0);
     return { ...entry, cusum };
   });
 
@@ -1437,7 +1437,9 @@ export const StabilityCharts = ({ data, results, baseline }) => {
         <ChartCard
           label="(B)"
           title="Timepoint Status"
-          caption="Individual stability with practical significance (±15%). Asterisk (*) = stat different but within range."
+          caption={`Individual stability with practical significance (\u00b1${Math.round(
+            (results.practicalSignificanceThreshold ?? 0.15) * 100
+          )}%). Asterisk (*) = stat different but within range.`}
         >
           <div
             style={{
@@ -1524,7 +1526,7 @@ export const StabilityCharts = ({ data, results, baseline }) => {
                 fontStyle: "italic",
               }}
             >
-              * Stat different but within ±15%
+              * Stat different but within \u00b1{Math.round((results.practicalSignificanceThreshold ?? 0.15) * 100)}%
             </div>
           </div>
         </ChartCard>

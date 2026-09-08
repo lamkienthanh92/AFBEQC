@@ -1,0 +1,61 @@
+=== HOMOGENEITY (n = 10 slides x 2 readers) ===
+mean           371.70
+SD             40.11
+CV %           10.79
+M-2SD          291.48 PASS
+ICC model      ICC(2,1): two-way random effects, absolute agreement, single rater
+ICC(2,1)       0.8670
+ICC(1,1)       0.8657
+ICC 95% CI     0.558 - 0.965
+paired t (readers)  t = 1.639 df = 9 p = 0.1356
+Bland-Altman bias    10.20 LoA [ -28.37 , 48.77 ]
+Grubbs outlier       {"grubbsStatistic":2.0120075681109184,"criticalValue":2.156863893635874,"isOutlier":false,"outlierValue":291,"outlierIndex":6}
+
+=== STABILITY (baseline = 371.7) ===
+timepoint |   mean |   delta% |      t | df |      p | stable
+Day 1     |  351.3 |  -5.5 | -1.183 |  5 | 0.2898 | yes | SD(diff) = 42.16
+Day 3     |  386.3 | +  3.9 |  2.670 |  5 | 0.0444 | yes | SD(diff) = 13.43
+Day 5     |  356.8 |  -4.0 | -0.914 |  5 | 0.4025 | yes | SD(diff) = 39.83
+Day 7     |  361.5 |  -2.7 | -0.763 |  5 | 0.4801 | yes | SD(diff) = 32.76
+Week 1    |  383.5 | +  3.2 |  1.920 |  5 | 0.1130 | yes | SD(diff) = 15.06
+Week 2    |  336.2 |  -9.6 | -3.026 |  5 | 0.0292 | yes | SD(diff) = 28.76
+Week 3    |  367.8 |  -1.0 | -0.518 |  5 | 0.6267 | yes | SD(diff) = 18.29
+Week 4    |  354.7 |  -4.6 | -1.032 |  5 | 0.3493 | yes | SD(diff) = 40.43
+
+=== VARIANCE COMPONENTS ===
+between-timepoint variance 278.5 ( 25.1 % )
+within-timepoint  variance 831.6 ( 74.9 % )
+
+=== TREND ===
+slope -0.452 AFB/day  R2 0.0659 t -0.650 df 6 p 0.5395
+CUSUM by time point: -20.4, -5.7, -20.6, -30.8, -19.0, -54.5, -58.4, -75.4
+CUSUM decision limits (+/-50% of baseline): 185.8
+
+=== UNCERTAINTY BUDGET ===
+Homogeneity                40.11 AFB  contribution 45.2 %
+Stability                  16.69 AFB  contribution 7.8 %
+Measurement Repeatability  40.85 AFB  contribution 46.9 %
+combined u_c  59.63
+expanded U    119.26 ( 32.1 % rel )
+MC mean 371.14 sd 59.49 95% [ 255.2 , 487.4 ]
+
+=== DECISION ===
+{
+  "overallPass": true,
+  "homogeneityPass": true,
+  "stabilityPass": true,
+  "recommendation": "LOT APPROVED FOR RELEASE"
+}
+
+---------------------------------------------------------------------------
+Produced by: node verify.mjs  (Monte Carlo seed = 20240101, 10 000 iterations)
+Engine: src/StatisticalEngine.js after correction of
+  (1) t-test p-values  - exact Student's t replaces the normal approximation
+  (2) stability test    - one-sample t vs baseline, df = n-1 (was df = 2n-2)
+  (3) fCDF()            - exact F distribution replaces the 0.5 placeholder
+  (4) ICC               - true two-way ICC(2,1) with 95 % CI (was ICC(1,1))
+  (5) CUSUM             - first time point no longer dropped from the sum
+  (6) regression         - slope expressed per elapsed day, not per occasion
+  (7) Monte Carlo        - seedable RNG for exact reproducibility
+All values independently cross-checked against scipy.stats.
+---------------------------------------------------------------------------

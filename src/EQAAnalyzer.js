@@ -55,6 +55,7 @@ const EQAAnalyzer = () => {
     acceptanceCriteria: {
       homogeneityThreshold: 200,
       pValueThreshold: 0.05,
+      practicalSignificanceThreshold: 0.15,
     },
   });
 
@@ -88,6 +89,7 @@ const EQAAnalyzer = () => {
       acceptanceCriteria: {
         homogeneityThreshold: 200,
         pValueThreshold: 0.05,
+        practicalSignificanceThreshold: 0.15,
       },
     });
     setHomogeneityData(sample.homogeneity);
@@ -480,6 +482,48 @@ const EQAAnalyzer = () => {
                 })
               }
             />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>
+              Practical Significance Threshold for Stability (% change from
+              baseline)
+            </label>
+            <input
+              style={styles.input}
+              type="number"
+              step="1"
+              min="1"
+              max="100"
+              value={studyInfo.acceptanceCriteria.practicalSignificanceThreshold * 100}
+              onChange={(e) => {
+                const pct = parseFloat(e.target.value);
+                setStudyInfo({
+                  ...studyInfo,
+                  acceptanceCriteria: {
+                    ...studyInfo.acceptanceCriteria,
+                    practicalSignificanceThreshold: isNaN(pct) ? 0 : pct / 100,
+                  },
+                });
+              }}
+              placeholder="e.g., 15"
+            />
+            <small
+              style={{
+                color: "#6c757d",
+                fontSize: "13px",
+                marginTop: "5px",
+                display: "block",
+              }}
+            >
+              A timepoint is flagged unstable only if BOTH the paired t-test is
+              significant AND the change exceeds this percentage. Different
+              EQA schemes / analytes use different acceptable-variation
+              limits (commonly 10\u201325 %) \u2014 set this to match your programme's
+              own criterion; there is no universal default for AFB
+              microscopy, so review before relying on the built-in value of
+              15 %.
+            </small>
           </div>
 
           <button style={styles.button} onClick={() => setStep(2)}>
