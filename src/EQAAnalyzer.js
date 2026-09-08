@@ -3,11 +3,6 @@ import {
   performStatisticalAnalysis,
   setRandomSeed,
 } from "./StatisticalEngine";
-
-// Monte Carlo simulation is seeded by default so that a given dataset always
-// produces the same simulated statistics and the exported dashboards can be
-// reproduced exactly. Set studyInfo.monteCarloSeed to null for a random run.
-const DEFAULT_MONTE_CARLO_SEED = 20240101;
 import {
   HomogeneityCharts,
   StabilityCharts,
@@ -15,6 +10,11 @@ import {
   DecisionSummary,
 } from "./ChartLibrary";
 import { ExportButton } from "./ExportDashboard";
+
+// Monte Carlo simulation is seeded by default so that a given dataset always
+// produces the same simulated statistics and the exported dashboards can be
+// reproduced exactly. Set studyInfo.monteCarloSeed to null for a random run.
+const DEFAULT_MONTE_CARLO_SEED = 20240101;
 
 // Sample data
 const SAMPLE_DATA = {
