@@ -263,7 +263,7 @@ export const DecisionSummary = ({ results, criteria }) => {
         <ChartCard
           label="(B)"
           title="Inter-reader Agreement"
-          caption="Intraclass correlation coefficient (ICC). >0.90 = Excellent, 0.75-0.90 = Good."
+          caption="ICC(2,1): two-way random effects, absolute agreement, single rater. &gt;0.90 = Excellent, 0.75-0.90 = Good. p is the paired comparison between readers."
         >
           <div style={{ textAlign: "center", padding: "20px 10px" }}>
             <div

@@ -1,5 +1,13 @@
 import React, { useState, useRef } from "react";
-import { performStatisticalAnalysis } from "./StatisticalEngine";
+import {
+  performStatisticalAnalysis,
+  setRandomSeed,
+} from "./StatisticalEngine";
+
+// Monte Carlo simulation is seeded by default so that a given dataset always
+// produces the same simulated statistics and the exported dashboards can be
+// reproduced exactly. Set studyInfo.monteCarloSeed to null for a random run.
+const DEFAULT_MONTE_CARLO_SEED = 20240101;
 import {
   HomogeneityCharts,
   StabilityCharts,
@@ -122,10 +130,30 @@ const EQAAnalyzer = () => {
 
   // Run analysis
   const runAnalysis = () => {
+    setRandomSeed(
+      studyInfo?.monteCarloSeed === undefined
+        ? DEFAULT_MONTE_CARLO_SEED
+        : studyInfo.monteCarloSeed
+    );
+    // Derive elapsed days from time-point labels such as "day3" or "week2" so
+    // that the trend slope is expressed per day rather than per measurement
+    // occasion; fall back to the ordinal index when a label cannot be parsed.
+    const parsedDays = (stabilityData.timepoints || []).map((tp) => {
+      const m = String(tp).match(/^\s*(day|week)\s*(\d+)/i);
+      if (!m) return null;
+      return m[1].toLowerCase() === "week"
+        ? parseInt(m[2], 10) * 7
+        : parseInt(m[2], 10);
+    });
+    // Only use elapsed days if every label parsed; mixing days with ordinal
+    // indices would make the slope units meaningless.
+    const elapsedDays = parsedDays.every((d) => d !== null)
+      ? parsedDays
+      : undefined;
     const results = performStatisticalAnalysis({
       studyInfo,
       homogeneity: homogeneityData,
-      stability: stabilityData,
+      stability: { ...stabilityData, elapsedDays },
     });
     setAnalysisResults(results);
     setActiveTab("summary");

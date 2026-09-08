@@ -63,31 +63,26 @@ independent two-sample t-test: 0.5836  (df 18 )
 paired t-test              : 0.1356  (df 9 )
 
 ---------------------------------------------------------------------------
-Two runs are reported above.
+verify.mjs  - all eight time points
+verify4.mjs - the four short-term time points (the basis of Figs. 1-4)
 
-  verify.mjs   - all eight time points (short-term + long-term)
-  verify4.mjs  - the four short-term time points only
+Engine and dashboard corrections (see README.md):
+  1  exact Student t distribution for all t-test p-values
+  2  one-sample t vs baseline for stability, df = n - 1
+  3  exact F distribution (fCDF was a 0.5 placeholder)
+  4  genuine two-way ICC(2,1) with an exact 95 % CI
+  5  CUSUM no longer drops the first time point
+  6  regression slope expressed per elapsed day
+  7  seedable Monte Carlo generator, seeded by default in the application
+  8  summary dashboard shows the paired reader comparison, not the
+     independent two-sample test
+  9  stability control bands driven by the configured practical-significance
+     threshold instead of hard-coded +/-10 % and +/-20 %
+ 10  Bland-Altman axis domains derived from the data and the limits
+ 11  literal \u00b1 escape in JSX text replaced with the character
+ 12  inter-reader card names the ICC model and the test displayed
 
-The values published in the manuscript and shown in Figs. 1-4 come from the
-SHORT-TERM run (verify4.mjs), which is the analysis the dashboards were
-exported from. Every time point, short-term and long-term, is nevertheless
-assessed individually against the dual stability criteria; those per-time-point
-p-values do not depend on how many time points are in the run.
-
-Engine corrections applied (see README.md):
-  1 exact Student t distribution for all t-test p-values
-  2 one-sample t vs baseline for stability, df = n - 1
-  3 exact F distribution (fCDF was a 0.5 placeholder)
-  4 genuine two-way ICC(2,1) with an exact 95 % CI
-  5 CUSUM no longer drops the first time point
-  6 regression slope expressed per elapsed day
-  7 seedable Monte Carlo generator
-  8 summary dashboard shows the paired reader comparison, not the
-    independent two-sample test
-  9 stability control bands driven by the configured practical-significance
-    threshold instead of hard-coded +/-10 % and +/-20 %
- 10 Bland-Altman axis domains derived from the data and the limits, so the
-    lower limit of agreement can no longer fall outside the plot
- 11 literal \u00b1 escape in JSX text replaced with the character
+Because the application now seeds the Monte Carlo generator by default, the
+values printed above are exactly what the dashboards export.
 All values cross-checked against scipy.stats.
 ---------------------------------------------------------------------------
