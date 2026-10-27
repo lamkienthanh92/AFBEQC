@@ -1,8 +1,8 @@
 # EQA Sample Production Analyser
 
-A web-based statistical analysis tool for external quality assessment (EQA) panel production, developed for and evaluated on tuberculosis (AFB) sputum smear microscopy proficiency-testing materials. It automates the homogeneity, stability, and measurement-uncertainty procedures recommended by ISO 13528:2015, ISO Guide 35:2006, and ISO 17043:2023, and generates publication-ready dashboards from the results.
+A web-based statistical analysis tool for external quality assessment (EQA) panel production, developed for and evaluated on tuberculosis (AFB) sputum smear microscopy proficiency-testing materials. It automates homogeneity, stability, and measurement-uncertainty procedures aligned with selected principles of ISO 13528:2022, ISO 33405:2024 and ISO 17043:2023, and generates publication-ready dashboards from the results.
 
-**Live demo:** https://svqwmr.csb.app/
+**Live application:** https://afbeqc.netlify.app/
 
 This repository accompanies the manuscript *"Development and proof-of-concept evaluation of an automated web-based software tool for statistical analysis of external quality assessment panel preparation in tuberculosis microscopy"* (under review, *Accreditation and Quality Assurance*). See [Citation](#citation) below.
 
@@ -13,10 +13,24 @@ Proof-of-concept research software. It has been evaluated on a single production
 ## Features
 
 - **Homogeneity module** — mean, SD, CV, M−2SD acceptance criterion; paired *t*-test and *F*-test between readers; intraclass correlation coefficient (ICC) and concordance correlation coefficient; Bland–Altman agreement analysis; Grubbs' and Dixon's outlier tests; Levey–Jennings control chart with Westgard-rule zone shading.
-- **Stability module** — dual-criteria assessment (statistical significance + ±15% practical-significance threshold) at each time point against baseline; one-way ANOVA variance-components decomposition (between- vs. within-time-point); CUSUM control chart; linear regression trend test; Mann–Kendall trend test.
-- **Uncertainty module** — combined standard uncertainty budget (GUM methodology) with Pareto ranking of contributors; Monte Carlo simulation (configurable iterations, default 10,000) for distribution validation; expanded uncertainty at coverage factors *k* = 1, 2, 3.
+- **Stability module** — dual-criteria assessment at each time point against baseline: one-sample *t*-test on the slide-level means plus a ±15% practical-significance threshold (user-adjustable); a time point is classified unstable only when the change is both statistically significant and outside the threshold, and a change outside the threshold that is not significant is flagged for investigation; one-way ANOVA variance-components decomposition (between- vs. within-time-point); CUSUM control chart; linear regression trend test; Mann–Kendall trend test.
+- **Uncertainty module** — combined standard uncertainty budget (GUM methodology) with a Pareto chart of contributors in descending order of contribution; Monte Carlo simulation (configurable iterations, default 10,000) as a numerical cross-check of the GUM result; expanded uncertainty at coverage factors *k* = 1, 2, 3.
 - **Automated dashboards** — Summary Decision, Homogeneity Analysis, Stability Analysis, and Uncertainty Budget views, each exportable as a 300 DPI PNG image.
 - Built-in sample dataset (the Lot ĐGĐ-P01 data reported in the manuscript) for quick evaluation.
+
+## Lot release decision
+
+A lot is approved only when every primary acceptance criterion stated in the manuscript is met:
+
+| Criterion | Rule (defaults) |
+| --- | --- |
+| Homogeneity | M − 2SD above the grade threshold (200 AFB for 3+) |
+| Inter-reader agreement | ICC(2,1) ≥ 0.75 and \|Bland–Altman bias\| ≤ 10 % of the mean |
+| Outliers | Grubbs test not significant (α = 0.05) |
+| Stability | dual criteria met at every time point |
+| Measurement uncertainty | lower bound of the GUM coverage interval (mean − U, k = 2) above the grade threshold |
+
+The paired *t*-test between readers is reported as an exploratory check and does not gate the decision. Variance components, CUSUM, Levey–Jennings/Westgard and regression outputs are descriptive. The ICC and bias limits can be changed through `acceptanceCriteria.iccThreshold` and `acceptanceCriteria.maxBiasPercent`.
 
 ## Data entry
 
@@ -74,8 +88,8 @@ Developed at the Faculty of Medical Technology, Van Lang University, Ho Chi Minh
 
 ## Statistical engine corrections (revision for Accreditation and Quality Assurance)
 
-Eight defects were identified and fixed while verifying the values reported in
-the manuscript. They are documented inline in `src/StatisticalEngine.js` and
+The defects below were identified and fixed while verifying the values reported
+in the manuscript. They are documented inline in `src/StatisticalEngine.js` and
 `src/ChartLibrary.js`:
 
 1. **Exact t distribution.** All t-test p-values were previously computed from
@@ -106,6 +120,24 @@ the manuscript. They are documented inline in `src/StatisticalEngine.js` and
    slope in AFB per day; otherwise the ordinal index is used.
 7. **Seedable Monte Carlo.** `setRandomSeed(n)` makes the simulation exactly
    reproducible; pass `null` to restore `Math.random()`.
+
+### Changes in the final (minor) revision
+
+These changes do not alter any value reported in the manuscript; `verify.mjs`
+reproduces the same statistics and the same lot decision.
+
+8. **Pareto chart order.** The uncertainty Pareto chart now sorts contributors
+   in descending order of contribution (Fig. 4a of the manuscript).
+9. **Lot release decision.** The overall decision previously required the
+   independent two-sample *t*-test between readers to be non-significant, which
+   is not one of the stated acceptance criteria. It now applies the primary
+   criteria listed under *Lot release decision* above, and returns each
+   criterion's result in `decision.criteria`.
+10. **Stability flag.** A time point whose change exceeds the practical
+    threshold without reaching statistical significance is still classified
+    stable under the dual-criteria rule, but its `stabilityReason` now flags it
+    for investigation instead of reporting only "No statistically significant
+    difference".
 
 ### Reproducing the published values
 

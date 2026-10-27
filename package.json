@@ -2,12 +2,12 @@
   "name": "eqa-sample-production-analyser",
   "version": "1.0.0",
   "private": false,
-  "description": "Automated web-based statistical analysis tool for external quality assessment (EQA) panel preparation in tuberculosis microscopy, implementing ISO 13528 / ISO Guide 35 / ISO 17043 homogeneity, stability, and measurement-uncertainty procedures.",
+  "description": "Automated web-based statistical analysis tool for external quality assessment (EQA) panel preparation in tuberculosis microscopy, implementing ISO 13528 / ISO 33405 / ISO 17043 homogeneity, stability, and measurement-uncertainty procedures.",
   "license": "MIT",
-  "homepage": "https://svqwmr.csb.app/",
+  "homepage": "https://afbeqc.netlify.app/",
   "repository": {
     "type": "git",
-    "url": "REPLACE_WITH_YOUR_GITHUB_REPO_URL"
+    "url": "https://github.com/lamkienthanh92/AFBEQC"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

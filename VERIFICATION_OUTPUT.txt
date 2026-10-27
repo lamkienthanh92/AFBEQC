@@ -44,6 +44,18 @@ MC mean 371.14 sd 59.49 95% [ 255.2 , 487.4 ]
   "overallPass": true,
   "homogeneityPass": true,
   "stabilityPass": true,
+  "criteria": {
+    "homogeneity": true,
+    "icc": true,
+    "bias": true,
+    "outliers": true,
+    "stability": true,
+    "uncertainty": true
+  },
+  "iccThreshold": 0.75,
+  "maxBiasPercent": 10,
+  "biasPercent": 2.744148506860371,
+  "coverageLowerBound": 252.43665718581303,
   "recommendation": "LOT APPROVED FOR RELEASE"
 }
 SHORT-TERM RUN (4 time points) - as exported in the dashboards
@@ -85,6 +97,15 @@ Engine and dashboard corrections (see README.md):
  10  Bland-Altman axis domains derived from the data and the limits
  11  literal \u00b1 escape in JSX text replaced with the character
  12  inter-reader card names the ICC model and the test displayed
+ 13  Pareto chart sorts uncertainty contributors in descending order
+ 14  lot decision applies the manuscript's a priori primary criteria
+     (M-2SD, ICC(2,1) >= 0.75, |bias| <= 10 %, Grubbs, stability, mean - U);
+     it previously required a non-significant independent two-sample t-test
+ 15  stability: change beyond the practical threshold without statistical
+     significance is flagged for investigation (classification unchanged)
+
+Items 13-15 change no reported statistic; the decision is unchanged
+(LOT APPROVED FOR RELEASE, all six criteria met).
 
 All values cross-checked against scipy.stats.
 ---------------------------------------------------------------------------

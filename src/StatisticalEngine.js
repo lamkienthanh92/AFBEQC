@@ -583,6 +583,14 @@ export const performStatisticalAnalysis = (input) => {
       stabilityReason = `Statistically different (p=${comparison.pValue.toFixed(
         3
       )}) but within acceptable range (Δ=${percentChange.toFixed(1)}%)`;
+    } else if (!statisticallyDifferent && clinicallySignificant) {
+      // Classified stable under the dual-criteria rule, but with n = 3 slides
+      // the test has little power: flag the change for investigation.
+      stabilityReason = `Not statistically significant (p=${comparison.pValue.toFixed(
+        3
+      )}) but change exceeds the practical threshold (Δ=${percentChange.toFixed(
+        1
+      )}%) - investigate`;
     } else {
       stabilityReason = "No statistically significant difference";
     }
@@ -712,11 +720,37 @@ export const performStatisticalAnalysis = (input) => {
   );
 
   // ========== FINAL DECISION ==========
+  // Primary acceptance criteria, defined a priori in the manuscript
+  // (Statistical analysis; Table 2):
+  //   homogeneity     M - 2SD > grade threshold
+  //   agreement       ICC(2,1) >= 0.75 and |Bland-Altman bias| <= 10 % of mean
+  //   outliers        Grubbs test not significant (alpha = 0.05)
+  //   stability       dual criteria at every time point
+  //   uncertainty     lower bound of the GUM coverage interval (mean - U)
+  //                   above the grade threshold
+  // The paired t-test between readers is an exploratory check and does not
+  // gate the decision. (Previously the decision used the independent
+  // two-sample t-test, which is not one of the stated criteria.) Variance
+  // components, CUSUM, Levey-Jennings and regression remain descriptive.
+  const criteriaCfg = studyInfo.acceptanceCriteria || {};
+  const iccThreshold = criteriaCfg.iccThreshold ?? 0.75;
+  const maxBiasPercent = criteriaCfg.maxBiasPercent ?? 10;
   const allStable = Object.values(stabilityResults).every((r) => r.stable);
-  const overallPass =
-    homogeneityPass &&
-    tTestResult.pValue > studyInfo.acceptanceCriteria.pValueThreshold &&
-    allStable;
+  const biasPercent =
+    homogeneityMean !== 0
+      ? Math.abs((blandAltmanResult.bias / homogeneityMean) * 100)
+      : NaN;
+  const coverageLowerBound =
+    homogeneityMean - uncertaintyBudgetResult.expandedUncertainty;
+  const criteria = {
+    homogeneity: homogeneityPass,
+    icc: iccResult.icc >= iccThreshold,
+    bias: biasPercent <= maxBiasPercent,
+    outliers: !grubbsResult.isOutlier,
+    stability: allStable,
+    uncertainty: coverageLowerBound > criteriaCfg.homogeneityThreshold,
+  };
+  const overallPass = Object.values(criteria).every(Boolean);
 
   return {
     homogeneity: {
@@ -754,6 +788,11 @@ export const performStatisticalAnalysis = (input) => {
       overallPass: overallPass,
       homogeneityPass: homogeneityPass,
       stabilityPass: allStable,
+      criteria: criteria,
+      iccThreshold: iccThreshold,
+      maxBiasPercent: maxBiasPercent,
+      biasPercent: biasPercent,
+      coverageLowerBound: coverageLowerBound,
       recommendation: overallPass
         ? "LOT APPROVED FOR RELEASE"
         : "LOT FAILED - DO NOT RELEASE",

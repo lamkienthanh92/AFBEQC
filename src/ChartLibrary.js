@@ -1881,7 +1881,11 @@ export const StabilityCharts = ({ data, results, baseline }) => {
 // ============================================================================
 
 export const UncertaintyCharts = ({ results }) => {
-  const budgetData = results.budget.contributions;
+  // Pareto chart: contributors sorted in descending order of contribution,
+  // so the cumulative-percentage line is read from the largest source down.
+  const budgetData = [...results.budget.contributions].sort(
+    (a, b) => b.contribution - a.contribution
+  );
 
   const mcDistribution = results.monteCarlo.distribution;
   const histogramBins = 35;
